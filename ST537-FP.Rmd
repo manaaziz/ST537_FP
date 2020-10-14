@@ -1,0 +1,31 @@
+---
+title: "Untitled"
+author: "Mana Azizsoltani & Chris Comora"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 1
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+# Set default chunk settings
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+# Load Required Libraries
+library(rmarkdown)
+library(tidyverse)
+library(caret)
+library(randomForest)
+
+# Set Working Directory
+setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/ST537/ST537_FP")
+```
+
+\newpage
+
+```{r}
+# Read in the datasets
+
+```
+
