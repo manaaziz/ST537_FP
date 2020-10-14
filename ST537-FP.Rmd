@@ -27,8 +27,48 @@ setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/S
 
 \newpage  
 
-# Data Preparation  
+# Introduction  
+In the hospitality industry, there is currently a new push towards the implementation of different sorts of analytics solutions, especially in the realm of revenue management and optimization. Hotel rooms are a limited commodity, and once a room on a certain date is booked in advance, the hotel must guarantee the room to that customer. The problem is that the hotel takes on risk when they book the room, because the customer could cancel with relatively short notice, which leaves the hotel either with a vacant room or with no other choice than to downsell the room last minute. The impact on the bottom-line can be significant; research has shown that cancellations impacted "almost 40% of on-the-books revenue" in 2018 for some hotels.  
+
+For this project we will be assessing the accuracy, sensitivity, and specificity of various machine learning techniques when faced with predicting hotel cancellations. Essentially, these machine learning models will be attempting to classify a given hotel booking as either cancelled or not cancelled. We will be running the following four binary classification models:  
+
+  * Random Forest  
+  * Support Vector Machine (SVM)
+  * K-Nearest Neighbors (KNN)
+  * Logistic Regression
+
+The data sets used come from two different hotels located in Southern Portugal. The first hotel is a resort hotel and the second one is located within a city. They have 31 variables that correspond to different booking information. The first hotel has about 40,000 records, while the second has just under 80,000. Each record corresponds to a booking from the period between July 1, 2015 and August 31, 2017. The data are in .csv format. No-shows are considered cancellations.  
+
+# Required Libraries
+To run the code for the project, the following libraries are required:
+
+  * `caret`: to do the heavy lifting of training and tuning the models  
+  * `tidyverse`: for all the data reading and wrangling  
+  * `knitr`: for rmarkdown table outputs  
+  * `rmarkdown`: for output documents  
+  * `randomForest`: fitting random forest models  
+  * `kernlab`: fitting the support vector machine  
+  * `class`: fitting the k-nearest neighbor model  
+
+
+# Data  
+## Variable Descriptions  
+  
+  * IsCanceled: value indicating whether or not the booking was cancelled  
+  * PreviousCancellations: number of previous bookings that were cancelled by the customer prior to the current booking  
+  * ADR: average daily rate of the room                          
+  * AssignedRoomType: code for the type of room assigned to the booking   
+  * CustomerType: type of booking
+  * DepositType: indication on if the customer made a deposit to guarantee the booking
+    - Deposit can take on the values `No Deposit`, `Non Refund`, or `Refundable`
+  * LeadTime: number of days that elapsed between the entering date of the booking into the PMS and the arrival date  
+  * MarketSegment: market segment designation   
+    - In categories, the term “TA” means “Travel Agents” and “TO” means “Tour Operators”    
+  * RequiredCarParkingSpaces: number of car parking spaces required by the customer  
+  * StaysInWeekNights: number of week nights (Monday to Friday) the guest stayed or booked to stay at the hotel
+
 ## Reading in the Data  
+First things first, we read in the data and check to see that there are no missing values. Luckily, the two hotel data sets are clean and ready-to-go.  
 ```{r}
 # Read in H1 dataset
 h1 <- read_csv("H1.csv", col_names = TRUE)
@@ -43,10 +83,11 @@ print(c("NAs H1" = sum(is.na(h1)), "NAs H2" = sum(is.na(h2))))
 ```  
 
 ## Data Partitioning  
+Before creating the models, we must split the data into a training and test data set in order to later evaluate the model's prediction accuracy. For this project we will be using a 75/25 split, training the data on the 75% and testing the trained models on the withheld 25%.   
 ```{r}
 # Create Data Partition
-h1.index <- createDataPartition(h1$IsCanceled, p = .8, list = FALSE)
-h2.index <- createDataPartition(h2$IsCanceled, p = .8, list = FALSE)
+h1.index <- createDataPartition(h1$IsCanceled, p = .75, list = FALSE)
+h2.index <- createDataPartition(h2$IsCanceled, p = .75, list = FALSE)
 
 # Create train/test data for H1
 h1.train <- h1[h1.index,]
@@ -57,17 +98,53 @@ h2.train <- h2[h2.index,]
 h2.test <- h2[-h2.index,]
 ```  
 
+## Variable Selection
+After running an initial random forest model on the entire dataset with selected predictors, we looked at the variable importance of the predictors to decide which variables we would use in our final model.  
+```{r, echo = FALSE}
+# Write preliminary model  
+model.pre <- IsCanceled ~ StaysInWeekendNights +   
+             DistributionChannel + BookingChanges +            
+             ReservedRoomType + StaysInWeekNights +         
+             PreviousCancellations + ADR +                        
+             AssignedRoomType + CustomerType +              
+             RequiredCarParkingSpaces + DepositType +               
+             MarketSegment + LeadTime  
+
+# Fit preliminary random forest on entire data set
+rf.pre <- randomForest(model.pre, data=h1, ntree=100, mtry=2, importance=TRUE)
+
+# Create data frame of variable importance
+df.pre <- rf.pre$importance %>% as.data.frame()
+X <- rownames(df.pre)
+
+# Sort the data frame and prep for plot
+VIrf.pre.sort <- df.pre[order(df.pre[,"MeanDecreaseAccuracy"]), , drop = FALSE]
+VIrf.pre.sort$X <- rownames(VIrf.pre.sort)
+VIrf.pre.sort$X <- factor(VIrf.pre.sort$X, levels = VIrf.pre.sort$X)
+
+# Plot variable importance
+vimp <- ggplot(VIrf.pre.sort,aes(x=X,y=MeanDecreaseAccuracy))+
+          geom_bar(stat = 'identity', position = 'dodge', fill="lightblue")+
+          theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+          ylab("Mean Decrease in Accuracy") + xlab("Predictor")+
+          ggtitle("Variable Importance Plot")
+vimp
+```  
+
+Based on this plot, we chose the 9 predictors with the highest variable importance.
+
 # Model Building  
+Before actually running the models, we went ahead and wrote the final formula of the models based on the variables we selected. Then, we specified our method of cross-validation, which will be a 5-fold holdout cross-validation.  
+
 ```{r}
 # Create a formula for the models using selected variables
 form <- IsCanceled ~ PreviousCancellations + ADR +                        
   AssignedRoomType + CustomerType +              
   RequiredCarParkingSpaces + DepositType +               
-  MarketSegment + LeadTime  
+  MarketSegment + LeadTime + StaysInWeekNights
 
 # Specify the cross-validation method (5-fold CV)
 trctrl <- trainControl(method = "cv", number = 5)
-
 ```
 
 ## Random Forest  
