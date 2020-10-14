@@ -3,7 +3,7 @@ title: "ST537 Final Project"
 author: "Mana Azizsoltani & Chris Comora"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
-  github_document:
+  pdf_document:
     toc: true
     toc_depth: 1
 ---
