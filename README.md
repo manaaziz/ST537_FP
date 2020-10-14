@@ -8,6 +8,6 @@ To run the code for the project, the following libraries are required:
 
   * `caret`
   * `tidyverse`
-  * 
+  * `rmarkdown`
 
 
