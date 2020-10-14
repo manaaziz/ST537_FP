@@ -58,58 +58,137 @@ h2.test <- h2[-h2.index,]
 ```  
 
 # Model Building  
-## Random Forest  
-```{r rf}
+```{r}
 # Create a formula for the models using selected variables
 form <- IsCanceled ~ PreviousCancellations + ADR +                        
   AssignedRoomType + CustomerType +              
   RequiredCarParkingSpaces + DepositType +               
   MarketSegment + LeadTime  
 
-# Specify the cross-validation method
+# Specify the cross-validation method (5-fold CV)
 trctrl <- trainControl(method = "cv", number = 5)
 
-# Fit random forest model
+```
+
+## Random Forest  
+```{r rf}
+#### HOTEL 1 ####
+# Fit random forest model for H1
 h1.rf <- train(form, data = h1.train, method = "rf",
                trControl = trctrl, importance = TRUE)
 
-# Obtain confusion matrix
+# Obtain confusion matrix and results for H1
 h1.rf.pred <- predict(h1.rf, newdata = h1.test)
 h1.rf.CM <- confusionMatrix(h1.rf.pred, h1.test$IsCanceled)
-h1.rf.CM
+h1.rf.res <- c(h1.rf.CM$overall[1], h1.rf.CM$byClass[1:2])
+
+#### HOTEL 2 ####
+# Fit random forest model for H1
+h2.rf <- train(form, data = h2.train, method = "rf",
+               trControl = trctrl, importance = TRUE)
+
+# Obtain confusion matrix and results for H1
+h2.rf.pred <- predict(h2.rf, newdata = h2.test)
+h2.rf.CM <- confusionMatrix(h2.rf.pred, h2.test$IsCanceled)
+h2.rf.res <- c(h2.rf.CM$overall[1], h2.rf.CM$byClass[1:2])
 ```  
 
 ## Support Vector Machine  
 ```{r svm}
-# Fit support vector machine
+#### HOTEL 1 ####
+# Fit support vector machine for H1
 h1.svm <- train(form, data = h1.train, method = "svmRadial", 
                 tfControl = trctrl, tuneLength = 10)
 
-# Obtain confusion matrix
+# Obtain confusion matrix and results for H1
 h1.svm.pred <- predict(h1.svm, newdata = h1.test)
 h1.svm.CM <- confusionMatrix(h1.svm.pred, h1.test$IsCanceled)
-h1.svm.CM
+h1.svm.res <- c(h1.svm.CM$overall[1], h1.svm.CM$byClass[1:2])
+
+#### HOTEL 2 ####
+# Fit support vector machine for H2
+h2.svm <- train(form, data = h2.train, method = "svmRadial", 
+                tfControl = trctrl, tuneLength = 10)
+
+# Obtain confusion matrix and results for H2
+h2.svm.pred <- predict(h2.svm, newdata = h2.test)
+h2.svm.CM <- confusionMatrix(h2.svm.pred, h2.test$IsCanceled)
+h2.svm.res <- c(h2.svm.CM$overall[1], h2.svm.CM$byClass[1:2])
 ```  
 
 ## K-Nearest Neighbor (KNN)  
 ```{r}
-# Fit knn Model
+#### HOTEL 1 ####
+# Fit knn Model for H1
 h1.knn <- train(form, data = h1.train, method = "knn",
                  trControl=trctrl, preProcess = c("center", "scale"))
 
-# Obtain confusion matrix
+# Obtain confusion matrix and results for H1
 h1.knn.pred <- predict(h1.knn, newdata = h1.test)
 h1.knn.CM <- confusionMatrix(h1.knn.pred, h1.test$IsCanceled)
-h1.knn.CM
-```  
+h1.knn.res <- c(h1.knn.CM$overall[1], h1.knn.CM$byClass[1:2])
+
+#### HOTEL 2 ####
+# Fit knn Model for H2
+h2.knn <- train(form, data = h2.train, method = "knn",
+                 trControl=trctrl, preProcess = c("center", "scale"))
+
+# Obtain confusion matrix and results for H2
+h2.knn.pred <- predict(h2.knn, newdata = h2.test)
+h2.knn.CM <- confusionMatrix(h2.knn.pred, h2.test$IsCanceled)
+h2.knn.res <- c(h2.knn.CM$overall[1], h2.knn.CM$byClass[1:2])
+```    
 
 ## Logistic Regression
 ```{r}
-# Fit logistic regression model
+#### HOTEL 1 ####
+# Fit logistic regression model for H1
 h1.glm <- glm(form, data = h1.train,  family = binomial(link = "logit"))
 
-# Obtain confusion matrix
+# Obtain confusion matrix and results for H1
 h1.glm.pred <- predict(h1.glm, newdata = h1.test, type = "response")
+h1.glm.pred <- h1.glm.pred %>% round() %>% as.factor()
 h1.glm.CM <- confusionMatrix(h1.glm.pred, h1.test$IsCanceled)
-h1.glm.CM
+h1.glm.res <- c(h1.glm.CM$overall[1], h1.glm.CM$byClass[1:2])
+
+#### HOTEL 2 ####
+# Fit logistic regression model for H2
+h2.glm <- glm(form, data = h2.train,  family = binomial(link = "logit"))
+
+# Obtain confusion matrix and results for H2
+h2.glm.pred <- predict(h2.glm, newdata = h2.test, type = "response")
+h2.glm.pred <- h2.glm.pred %>% round() %>% as.factor()
+h2.glm.CM <- confusionMatrix(h2.glm.pred, h2.test$IsCanceled)
+h2.glm.res <- c(h2.glm.CM$overall[1], h2.glm.CM$byClass[1:2])
+```  
+
+```{r tbl.h1}
+# Create pretty table of results for H1
+h1.tbl <- rbind.data.frame(h1.rf.res, h1.svm.res, h1.knn.res, h1.glm.res)
+colnames(h1.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
+rownames(h1.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
+h1.tbl %>% kable(caption = "H1 Model Results")
 ```
+
+```{r tbl.h2}
+# Create pretty table of results for H2
+h2.tbl <- rbind.data.frame(h2.rf.res, h2.svm.res, h2.knn.res, h2.glm.res)
+colnames(h2.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
+rownames(h2.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
+h2.tbl %>% kable(caption = "H2 Model Results")
+```
+
+```{r test, include=FALSE, eval=FALSE}
+temp.ind <- sample(h1.index, 2000, replace = FALSE)
+temp.ind2 <- sample(h1.index, )
+temp.train <- h1.train[1:2000,]
+temp.test <- h1.test[1:400,]
+
+fit <- train(form, data = temp.train, method = "rf",
+             trControl=trctrl, importance = TRUE)
+pred.temp <- predict(fit, newdata= temp.test)
+CM <- confusionMatrix(pred.temp, temp.test$IsCanceled)
+CM$overall[1]
+CM$byClass[1:2]
+```
+
