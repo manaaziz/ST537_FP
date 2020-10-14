@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "ST537 Final Project"
 author: "Mana Azizsoltani & Chris Comora"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -14,18 +14,102 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 
 # Load Required Libraries
 library(rmarkdown)
+library(knitr)
 library(tidyverse)
 library(caret)
 library(randomForest)
+library(kernlab)
+library(class)
 
 # Set Working Directory
 setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/ST537/ST537_FP")
 ```
 
-\newpage
+\newpage  
 
+# Data Preparation  
+## Reading in the Data  
 ```{r}
-# Read in the datasets
+# Read in H1 dataset
+h1 <- read_csv("H1.csv", col_names = TRUE)
+h1$IsCanceled <- h1$IsCanceled %>% as.factor()
 
+# Read in H2 dataset
+h2 <- read_csv("H1.csv", col_names = TRUE)
+h2$IsCanceled <- h2$IsCanceled %>% as.factor()
+
+# Check for missing values
+print(c("NAs H1" = sum(is.na(h1)), "NAs H2" = sum(is.na(h2))))
+```  
+
+## Data Partitioning  
+```{r}
+# Create Data Partition
+h1.index <- createDataPartition(h1$IsCanceled, p = .8, list = FALSE)
+h2.index <- createDataPartition(h2$IsCanceled, p = .8, list = FALSE)
+
+# Create train/test data for H1
+h1.train <- h1[h1.index,]
+h1.test <- h1[-h1.index,]
+
+# Create train/test data for H2
+h2.train <- h2[h2.index,]
+h2.test <- h2[-h2.index,]
+```  
+
+# Model Building  
+## Random Forest  
+```{r rf}
+# Create a formula for the models using selected variables
+form <- IsCanceled ~ PreviousCancellations + ADR +                        
+  AssignedRoomType + CustomerType +              
+  RequiredCarParkingSpaces + DepositType +               
+  MarketSegment + LeadTime  
+
+# Specify the cross-validation method
+trctrl <- trainControl(method = "cv", number = 5)
+
+# Fit random forest model
+h1.rf <- train(form, data = h1.train, method = "rf",
+               trControl = trctrl, importance = TRUE)
+
+# Obtain confusion matrix
+h1.rf.pred <- predict(h1.rf, newdata = h1.test)
+h1.rf.CM <- confusionMatrix(h1.rf.pred, h1.test$IsCanceled)
+h1.rf.CM
+```  
+
+## Support Vector Machine  
+```{r svm}
+# Fit support vector machine
+h1.svm <- train(form, data = h1.train, method = "svmRadial", 
+                tfControl = trctrl, tuneLength = 10)
+
+# Obtain confusion matrix
+h1.svm.pred <- predict(h1.svm, newdata = h1.test)
+h1.svm.CM <- confusionMatrix(h1.svm.pred, h1.test$IsCanceled)
+h1.svm.CM
+```  
+
+## K-Nearest Neighbor (KNN)  
+```{r}
+# Fit knn Model
+h1.knn <- train(form, data = h1.train, method = "knn",
+                 trControl=trctrl, preProcess = c("center", "scale"))
+
+# Obtain confusion matrix
+h1.knn.pred <- predict(h1.knn, newdata = h1.test)
+h1.knn.CM <- confusionMatrix(h1.knn.pred, h1.test$IsCanceled)
+h1.knn.CM
+```  
+
+## Logistic Regression
+```{r}
+# Fit logistic regression model
+h1.glm <- glm(form, data = h1.train,  family = binomial(link = "logit"))
+
+# Obtain confusion matrix
+h1.glm.pred <- predict(h1.glm, newdata = h1.test, type = "response")
+h1.glm.CM <- confusionMatrix(h1.glm.pred, h1.test$IsCanceled)
+h1.glm.CM
 ```
-
