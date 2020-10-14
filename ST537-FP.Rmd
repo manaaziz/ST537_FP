@@ -23,6 +23,9 @@ library(class)
 
 # Set Working Directory
 setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/ST537/ST537_FP")
+
+# Set seed for reproducibility
+set.seed(537)
 ```
 
 \newpage  
@@ -50,7 +53,6 @@ To run the code for the project, the following libraries are required:
   * `kernlab`: fitting the support vector machine  
   * `class`: fitting the k-nearest neighbor model  
 
-
 # Data  
 ## Variable Descriptions  
   
@@ -69,7 +71,7 @@ To run the code for the project, the following libraries are required:
 
 ## Reading in the Data  
 First things first, we read in the data and check to see that there are no missing values. Luckily, the two hotel data sets are clean and ready-to-go.  
-```{r}
+```{r readData}
 # Read in H1 dataset
 h1 <- read_csv("H1.csv", col_names = TRUE)
 h1$IsCanceled <- h1$IsCanceled %>% as.factor()
@@ -84,7 +86,7 @@ print(c("NAs H1" = sum(is.na(h1)), "NAs H2" = sum(is.na(h2))))
 
 ## Data Partitioning  
 Before creating the models, we must split the data into a training and test data set in order to later evaluate the model's prediction accuracy. For this project we will be using a 75/25 split, training the data on the 75% and testing the trained models on the withheld 25%.   
-```{r}
+```{r dataPart}
 # Create Data Partition
 h1.index <- createDataPartition(h1$IsCanceled, p = .75, list = FALSE)
 h2.index <- createDataPartition(h2$IsCanceled, p = .75, list = FALSE)
@@ -100,7 +102,7 @@ h2.test <- h2[-h2.index,]
 
 ## Variable Selection
 After running an initial random forest model on the entire dataset with selected predictors, we looked at the variable importance of the predictors to decide which variables we would use in our final model.  
-```{r, echo = FALSE}
+```{r varImp, echo = FALSE}
 # Write preliminary model  
 model.pre <- IsCanceled ~ StaysInWeekendNights +   
              DistributionChannel + BookingChanges +            
@@ -135,8 +137,7 @@ Based on this plot, we chose the 9 predictors with the highest variable importan
 
 # Model Building  
 Before actually running the models, we went ahead and wrote the final formula of the models based on the variables we selected. Then, we specified our method of cross-validation, which will be a 5-fold holdout cross-validation.  
-
-```{r}
+```{r formCV}
 # Create a formula for the models using selected variables
 form <- IsCanceled ~ PreviousCancellations + ADR +                        
   AssignedRoomType + CustomerType +              
@@ -194,9 +195,9 @@ h2.svm.res <- c(h2.svm.CM$overall[1], h2.svm.CM$byClass[1:2])
 ```  
 
 ## K-Nearest Neighbor (KNN)  
-```{r}
+```{r knn}
 #### HOTEL 1 ####
-# Fit knn Model for H1
+# Fit knn model for H1
 h1.knn <- train(form, data = h1.train, method = "knn",
                  trControl=trctrl, preProcess = c("center", "scale"))
 
@@ -206,7 +207,7 @@ h1.knn.CM <- confusionMatrix(h1.knn.pred, h1.test$IsCanceled)
 h1.knn.res <- c(h1.knn.CM$overall[1], h1.knn.CM$byClass[1:2])
 
 #### HOTEL 2 ####
-# Fit knn Model for H2
+# Fit knn model for H2
 h2.knn <- train(form, data = h2.train, method = "knn",
                  trControl=trctrl, preProcess = c("center", "scale"))
 
@@ -216,8 +217,8 @@ h2.knn.CM <- confusionMatrix(h2.knn.pred, h2.test$IsCanceled)
 h2.knn.res <- c(h2.knn.CM$overall[1], h2.knn.CM$byClass[1:2])
 ```    
 
-## Logistic Regression
-```{r}
+## Logistic Regression  
+```{r glm}
 #### HOTEL 1 ####
 # Fit logistic regression model for H1
 h1.glm <- glm(form, data = h1.train,  family = binomial(link = "logit"))
@@ -239,13 +240,14 @@ h2.glm.CM <- confusionMatrix(h2.glm.pred, h2.test$IsCanceled)
 h2.glm.res <- c(h2.glm.CM$overall[1], h2.glm.CM$byClass[1:2])
 ```  
 
+## Model Comparison  
 ```{r tbl.h1}
 # Create pretty table of results for H1
 h1.tbl <- rbind.data.frame(h1.rf.res, h1.svm.res, h1.knn.res, h1.glm.res)
 colnames(h1.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
 rownames(h1.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
 h1.tbl %>% kable(caption = "H1 Model Results")
-```
+```  
 
 ```{r tbl.h2}
 # Create pretty table of results for H2
@@ -253,9 +255,10 @@ h2.tbl <- rbind.data.frame(h2.rf.res, h2.svm.res, h2.knn.res, h2.glm.res)
 colnames(h2.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
 rownames(h2.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
 h2.tbl %>% kable(caption = "H2 Model Results")
-```
+```  
 
 ```{r test, include=FALSE, eval=FALSE}
+# I used this to figure out where each value was in the outputs
 temp.ind <- sample(h1.index, 2000, replace = FALSE)
 temp.ind2 <- sample(h1.index, )
 temp.train <- h1.train[1:2000,]
@@ -269,3 +272,5 @@ CM$overall[1]
 CM$byClass[1:2]
 ```
 
+
+# Conclusion  
