@@ -199,7 +199,7 @@ h2.svm.res <- c(h2.svm.CM$overall[1], h2.svm.CM$byClass[1:2])
 #### HOTEL 1 ####
 # Fit knn model for H1
 h1.knn <- train(form, data = h1.train, method = "knn",
-                 trControl=trctrl, preProcess = c("center", "scale"))
+                trControl=trctrl, preProcess = c("center", "scale"))
 
 # Obtain confusion matrix and results for H1
 h1.knn.pred <- predict(h1.knn, newdata = h1.test)
@@ -209,7 +209,7 @@ h1.knn.res <- c(h1.knn.CM$overall[1], h1.knn.CM$byClass[1:2])
 #### HOTEL 2 ####
 # Fit knn model for H2
 h2.knn <- train(form, data = h2.train, method = "knn",
-                 trControl=trctrl, preProcess = c("center", "scale"))
+                trControl=trctrl, preProcess = c("center", "scale"))
 
 # Obtain confusion matrix and results for H2
 h2.knn.pred <- predict(h2.knn, newdata = h2.test)
