@@ -72,13 +72,15 @@ To run the code for the project, the following libraries are required:
 ## Reading in the Data  
 First things first, we read in the data and check to see that there are no missing values. Luckily, the two hotel data sets are clean and ready-to-go.  
 ```{r readData, message=FALSE}
-# Read in H1 dataset
+# Read in H1 dataset, take the first 5000 rows
 h1 <- read_csv("H1.csv", col_names = TRUE)
 h1$IsCanceled <- h1$IsCanceled %>% as.factor()
+h1 <- h1[1:5000,]
 
-# Read in H2 dataset
+# Read in H2 dataset, take the first 5000 rows
 h2 <- read_csv("H1.csv", col_names = TRUE)
 h2$IsCanceled <- h2$IsCanceled %>% as.factor()
+h2 <- h2[1:5000,]
 
 # Check for missing values
 print(c("NAs H1" = sum(is.na(h1)), "NAs H2" = sum(is.na(h2))))
