@@ -162,6 +162,7 @@ trctrl <- trainControl(method = "cv", number = 5)
 ```
 
 ## Basic Classification Tree  
+The basic classification tree is based on partitioning the data into subgroups using simple binary splitting. Initially, all objects are considered a single group. Then, the group is binarily split into two subgroups based on the criteria of a certain variable. We then classify the observations in a specific region with majority vote. We want to grow the tree as big as we can, and then prune it back using cost-complexity pruning. This is done to not overfit the data, but pruning increases the bias. The pruning parameter needs to get tuned, which is done automatically in the `caret` package.  
 ```{r tree}
 #### HOTEL 1 ####
 # Fit basic tree model for H1
@@ -185,6 +186,7 @@ h2.tree.res <- c(h2.tree.CM$overall[1], h2.tree.CM$byClass[1:2])
 ```  
 
 ## Random Forest  
+The random forest model is an ensemble tree-based method, which creates multiple trees from bootstrap models and averages the results. A classification tree is fitted on each bootstrap sample with a random subset of the predictors. The final classification is based on majority vote of the bootstrap predictions.  
 ```{r rf}
 #### HOTEL 1 ####
 # Fit random forest model for H1
@@ -208,6 +210,7 @@ h2.rf.res <- c(h2.rf.CM$overall[1], h2.rf.CM$byClass[1:2])
 ```  
 
 ## Support Vector Machine  
+A support vector machine is a type of classification rule where it essentially maximizes the margin between groups by choosing the line with the widest "margin", but allowing for error. The support vectors are the points closest to the middle that carry the most weight when classifying, since they are the most prone to error and are deciding factors of where the classification line could go. We use a radial kernel function to deal with the non-linearity and higher-dimensions.  
 ```{r svm}
 #### HOTEL 1 ####
 # Fit support vector machine for H1
@@ -233,6 +236,7 @@ h2.svm.res <- c(h2.svm.CM$overall[1], h2.svm.CM$byClass[1:2])
 ```  
 
 ## K-Nearest Neighbor (KNN)  
+K-NN is a "model free" approach, meaning that it doesn't assume any probability model on the data. Given an observation, $\boldsymbol{x}$, we want to find the k training observations that are "closest" to $\boldsymbol{x}$, and then classify the new observation using majority vote among these k neighbors. We define "closeness" based on Eucledian distance in our model.  
 ```{r knn}
 #### HOTEL 1 ####
 # Fit knn model for H1
@@ -256,6 +260,7 @@ h2.knn.res <- c(h2.knn.CM$overall[1], h2.knn.CM$byClass[1:2])
 ```    
 
 ## Logistic Regression  
+The logistic regression model uses the "logit" function $log(\frac{p}{1-p})$, which links the mean to the linear form of the regression model, $\boldsymbol{X\beta}$. Using it for binary classification, we round the fitted values either up or down to 1 or 0.  
 ```{r glm}
 #### HOTEL 1 ####
 # Fit logistic regression model for H1
@@ -295,7 +300,6 @@ colnames(h2.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
 rownames(h2.tbl) <- c("Basic Tree", "Random Forest", "SVM", "KNN", "Logit. Reg.")
 h2.tbl %>% round(4) %>% kable(caption = "H2 Model Results")
 ```  
-
 
 # Conclusion  
 Looking at the output of the machine learning models on the two data sets, we can see that the Random Forest model had the highest accuracy (about 80%), with the KNN and SVM models falling close behind it in the mid-70s. The worst performance in terms of prediction accuracy came from the logistic regression model, with an accuracy right around 70%. When considering the non-information rate of 54%, all of the models were effective in at least increasing the prediction accuracy by about 20%. 
