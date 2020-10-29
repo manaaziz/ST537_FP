@@ -8,7 +8,7 @@ output:
     toc_depth: 1
 ---
 
-```{r setup, message=FALSE, warning=FALSE}
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 # Set default chunk settings
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 
@@ -20,12 +20,13 @@ library(caret)
 library(randomForest)
 library(kernlab)
 library(class)
+library(rpart)
 
 # Set Working Directory
 setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/ST537/ST537_FP")
 
 # Set seed for reproducibility
-set.seed(456)
+set.seed(537)
 ```
 
 \newpage  
@@ -40,7 +41,7 @@ For this project we will be assessing the accuracy, sensitivity, and specificity
   * K-Nearest Neighbors (KNN)
   * Logistic Regression
 
-The data sets used come from two different hotels located in Southern Portugal. The first hotel is a resort hotel and the second one is located within a city. They have 31 variables that correspond to different booking information. The first hotel has about 40,000 records, while the second has just under 80,000. Each record corresponds to a booking from the period between July 1, 2015 and August 31, 2017. The data are in .csv format. No-shows are considered cancellations.  
+The data sets used come from two different hotels located in Southern Portugal. The first hotel is a resort hotel located along the coast and the second one is located within a city. They have 31 variables that correspond to different booking information. The first hotel has about 40,000 records, while the second has just under 80,000. Each record corresponds to a booking from the period between July 1, 2015 and August 31, 2017. The data are in .csv format. No-shows are considered cancellations. Because of limitations on our computational power, we used the first 5,000 records of each data set.
 
 # Required Libraries
 To run the code for the project, the following libraries are required:
@@ -48,10 +49,13 @@ To run the code for the project, the following libraries are required:
   * `caret`: to do the heavy lifting of training and tuning the models  
   * `tidyverse`: for all the data reading and wrangling  
   * `knitr`: for rmarkdown table outputs  
-  * `rmarkdown`: for output documents  
+  * `rmarkdown`: for output documents 
+  * `rpart`: fitting the basic classification tree  
   * `randomForest`: fitting random forest models  
   * `kernlab`: fitting the support vector machine  
   * `class`: fitting the k-nearest neighbor model  
+
+\newpage
 
 # Data  
 ## Variable Descriptions  
@@ -86,33 +90,20 @@ h2 <- h2[1:5000,]
 print(c("NAs H1" = sum(is.na(h1)), "NAs H2" = sum(is.na(h2))))
 ```  
 
-## Data Partitioning  
-Before creating the models, we must split the data into a training and test data set in order to later evaluate the model's prediction accuracy. For this project we will be using a 75/25 split, training the data on the 75% and testing the trained models on the withheld 25%.   
-```{r dataPart}
-# Create Data Partition
-h1.index <- createDataPartition(h1$IsCanceled, p = .75, list = FALSE)
-h2.index <- createDataPartition(h2$IsCanceled, p = .75, list = FALSE)
-
-# Create train/test data for H1
-h1.train <- h1[h1.index,]
-h1.test <- h1[-h1.index,]
-
-# Create train/test data for H2
-h2.train <- h2[h2.index,]
-h2.test <- h2[-h2.index,]
-```  
+\newpage
 
 ## Variable Selection
-After running an initial random forest model on the entire dataset with selected predictors, we looked at the variable importance of the predictors to decide which variables we would use in our final model.  
+After running an initial random forest model on the entire dataset with selected predictors, we looked at the variable importance of the predictors to decide which variables we would use in our final model. Variable importance, in the context on machine learning, refers to how much a given model "uses" that variable to make accurate predictions. In other words, the more a model relies on a variable to make predictions, the more important it is for the model.  
+
 ```{r varImp, echo = FALSE}
 # Write preliminary model  
 model.pre <- IsCanceled ~ StaysInWeekendNights +   
              DistributionChannel + BookingChanges +            
              ReservedRoomType + StaysInWeekNights +         
-             PreviousCancellations + ADR +                        
+             ADR + LeadTime +                   
              AssignedRoomType + CustomerType +              
              RequiredCarParkingSpaces + DepositType +               
-             MarketSegment + LeadTime  
+             MarketSegment
 
 # Fit preliminary random forest on entire data set
 rf.pre <- randomForest(model.pre, data=h1, ntree=100, mtry=2, importance=TRUE)
@@ -135,13 +126,33 @@ vimp <- ggplot(VIrf.pre.sort,aes(x=X,y=MeanDecreaseAccuracy))+
 vimp
 ```  
 
-Based on this plot, we chose the 9 predictors with the highest variable importance.
+Based on this plot, we chose the 8 predictors with the highest variable importance.
+
+## Data Partitioning   
+Before creating the models, we must split the data into a training and test data set in order to later evaluate the model's prediction accuracy. For this project we will be using a 75/25 split, training the data on the 75% and testing the trained models on the withheld 25%.  
+```{r dataPart}
+# Get only necessary variables
+preds <- names(h1)[c(1,2,8,26,20,28,22,14,27)]
+
+# Create Data Partition
+h1.index <- createDataPartition(h1$IsCanceled, p = .75, list = FALSE)
+h2.index <- createDataPartition(h2$IsCanceled, p = .75, list = FALSE)
+
+# Create train/test data for H1
+h1.train <- h1[h1.index,preds]
+h1.test <- h1[-h1.index,preds]
+
+# Create train/test data for H2
+h2.train <- h2[h2.index,preds]
+h2.test <- h2[-h2.index,preds]
+```  
 
 # Model Building  
-Before actually running the models, we went ahead and wrote the final formula of the models based on the variables we selected. Then, we specified our method of cross-validation, which will be a 5-fold holdout cross-validation.  
+Before actually running the models, we went ahead and wrote the final formula of the models based on the variables we selected. Then, we specified our method of cross-validation, which will be a 5-fold cross-validation. For each model that required parameters to be tuned, we let the `caret` package tune the parameters and used the best tune of the parameters as specified in the model output.  
+
 ```{r formCV}
 # Create a formula for the models using selected variables
-form <- IsCanceled ~ PreviousCancellations + ADR +                        
+form <- IsCanceled ~ ADR +                        
   AssignedRoomType + CustomerType +              
   RequiredCarParkingSpaces + DepositType +               
   MarketSegment + LeadTime + StaysInWeekNights
@@ -149,6 +160,29 @@ form <- IsCanceled ~ PreviousCancellations + ADR +
 # Specify the cross-validation method (5-fold CV)
 trctrl <- trainControl(method = "cv", number = 5)
 ```
+
+## Basic Classification Tree  
+```{r tree}
+#### HOTEL 1 ####
+# Fit basic tree model for H1
+h1.tree <- train(form, data = h1.train, method = "rpart",
+                 trControl = trctrl)
+
+# Obtain confusion matrix and results for H1
+h1.tree.pred <- predict(h1.tree, newdata = h1.test)
+h1.tree.CM <- confusionMatrix(h1.tree.pred, h1.test$IsCanceled)
+h1.tree.res <- c(h1.tree.CM$overall[1], h1.tree.CM$byClass[1:2])
+
+#### HOTEL 2 ####
+# Fit basic tree model for H2
+h2.tree <- train(form, data = h2.train, method = "rpart",
+                 trControl = trctrl)
+
+# Obtain confusion matrix and results for H2
+h2.tree.pred <- predict(h2.tree, newdata = h2.test)
+h2.tree.CM <- confusionMatrix(h2.tree.pred, h2.test$IsCanceled)
+h2.tree.res <- c(h2.tree.CM$overall[1], h2.tree.CM$byClass[1:2])
+```  
 
 ## Random Forest  
 ```{r rf}
@@ -178,7 +212,8 @@ h2.rf.res <- c(h2.rf.CM$overall[1], h2.rf.CM$byClass[1:2])
 #### HOTEL 1 ####
 # Fit support vector machine for H1
 h1.svm <- train(form, data = h1.train, method = "svmRadial", 
-                tfControl = trctrl, tuneLength = 10)
+                preProcess = c("center", "scale"),
+                trControl = trctrl, tuneLength = 10)
 
 # Obtain confusion matrix and results for H1
 h1.svm.pred <- predict(h1.svm, newdata = h1.test)
@@ -188,7 +223,8 @@ h1.svm.res <- c(h1.svm.CM$overall[1], h1.svm.CM$byClass[1:2])
 #### HOTEL 2 ####
 # Fit support vector machine for H2
 h2.svm <- train(form, data = h2.train, method = "svmRadial", 
-                tfControl = trctrl, tuneLength = 10)
+                preProcess = c("center", "scale"),
+                trControl = trctrl, tuneLength = 10)
 
 # Obtain confusion matrix and results for H2
 h2.svm.pred <- predict(h2.svm, newdata = h2.test)
@@ -243,36 +279,25 @@ h2.glm.res <- c(h2.glm.CM$overall[1], h2.glm.CM$byClass[1:2])
 ```  
 
 ## Model Comparison  
-```{r tbl.h1}
+Below are two tables of the accuracy, sensitivity, and specificity of each model fit.  
+```{r tbl.h1, echo=FALSE}
 # Create pretty table of results for H1
-h1.tbl <- rbind.data.frame(h1.rf.res, h1.svm.res, h1.knn.res, h1.glm.res)
+h1.tbl <- rbind.data.frame(h1.tree.res, h1.rf.res, h1.svm.res, h1.knn.res, h1.glm.res)
 colnames(h1.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
-rownames(h1.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
-h1.tbl %>% kable(caption = "H1 Model Results")
+rownames(h1.tbl) <- c("Basic Tree", "Random Forest", "SVM", "KNN", "Logit. Reg.")
+h1.tbl %>% round(4) %>% kable(caption = "H1 Model Results")
 ```  
 
-```{r tbl.h2}
+```{r tbl.h2, echo=FALSE}
 # Create pretty table of results for H2
-h2.tbl <- rbind.data.frame(h2.rf.res, h2.svm.res, h2.knn.res, h2.glm.res)
+h2.tbl <- rbind.data.frame(h2.tree.res, h2.rf.res, h2.svm.res, h2.knn.res, h2.glm.res)
 colnames(h2.tbl) <- c("Accuracy", "Sensitivity", "Specificity")
-rownames(h2.tbl) <- c("Random Forest", "SVM", "KNN", "Logit. Reg.")
-h2.tbl %>% kable(caption = "H2 Model Results")
+rownames(h2.tbl) <- c("Basic Tree", "Random Forest", "SVM", "KNN", "Logit. Reg.")
+h2.tbl %>% round(4) %>% kable(caption = "H2 Model Results")
 ```  
-
-```{r test, include=FALSE, eval=FALSE}
-# I used this to figure out where each value was in the outputs
-temp.ind <- sample(h1.index, 2000, replace = FALSE)
-temp.ind2 <- sample(h1.index, )
-temp.train <- h1.train[1:2000,]
-temp.test <- h1.test[1:400,]
-
-fit <- train(form, data = temp.train, method = "rf",
-             trControl=trctrl, importance = TRUE)
-pred.temp <- predict(fit, newdata= temp.test)
-CM <- confusionMatrix(pred.temp, temp.test$IsCanceled)
-CM$overall[1]
-CM$byClass[1:2]
-```
 
 
 # Conclusion  
+Looking at the output of the machine learning models on the two data sets, we can see that the Random Forest model had the highest accuracy (about 80%), with the KNN and SVM models falling close behind it in the mid-70s. The worst performance in terms of prediction accuracy came from the logistic regression model, with an accuracy right around 70%. When considering the non-information rate of 54%, all of the models were effective in at least increasing the prediction accuracy by about 20%. 
+
+The fact that the random forest so drastically outperformed the basic classification tree did not come as a surprise, since as an average of many classification trees, ensemble methods generally improve prediction accuracy and reduce overall variance. We suspect that other ensemble methods, such as bagging or boosting, may also be able to get higher prediction accuracies. One of the main disadvantages to using ensemble techniques like the random forest is the fact that they tend to be very computationally intensive. The basic classification tree, logistic regression and KNN models took significantly less time to run than the random forest and the SVM. If we wanted to run an ensemble method on a very large data set, it would be a nightmare with the minuscule computational power of our personal computers.
