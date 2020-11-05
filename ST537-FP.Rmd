@@ -21,6 +21,7 @@ library(randomForest)
 library(kernlab)
 library(class)
 library(rpart)
+library(rpart.plot)
 
 # Set Working Directory
 setwd("~/Library/Mobile Documents/com~apple~CloudDocs/Documents/NCSU/Fall 2020/ST537/ST537_FP")
@@ -37,7 +38,7 @@ In the hospitality industry, there is currently a new push towards the implement
 For this project we will be assessing the accuracy, sensitivity, and specificity of various machine learning techniques when faced with predicting hotel cancellations. Essentially, these machine learning models will be attempting to classify a given hotel booking as either canceled or not canceled. We will be running the following four binary classification models:  
 
   * Basic Classification Tree
-  * Random Forest  
+  * Random Forest
   * Support Vector Machine (SVM)
   * K-Nearest Neighbors (KNN)
   * Logistic Regression
@@ -52,6 +53,7 @@ To run the code for the project, the following libraries are required:
   * `knitr`: for rmarkdown table outputs  
   * `rmarkdown`: for output documents  
   * `rpart`: fitting the basic classification tree  
+  * `rpart.plot`: visualization of the classification tree  
   * `randomForest`: fitting random forest models  
   * `kernlab`: fitting the support vector machine  
   * `class`: fitting the k-nearest neighbor model  
@@ -67,10 +69,8 @@ To run the code for the project, the following libraries are required:
   * AssignedRoomType: code for the type of room assigned to the booking  
   * CustomerType: type of booking  
   * DepositType: indication on if the customer made a deposit to guarantee the booking  
-    - Deposit can take on the values `No Deposit`, `Non Refund`, or `Refundable`  
   * LeadTime: number of days that elapsed between the entering date of the booking into the PMS and the arrival date  
   * MarketSegment: market segment designation  
-    - In categories, the term “TA” means “Travel Agents” and “TO” means “Tour Operators”  
   * RequiredCarParkingSpaces: number of car parking spaces required by the customer  
   * StaysInWeekNights: number of week nights (Monday to Friday) the guest stayed or booked to stay at the hotel  
 
@@ -184,8 +184,8 @@ h1.tree.CM <- confusionMatrix(h1.tree.pred, h1.test$IsCanceled)
 h1.tree.res <- c(h1.tree.CM$overall[1], h1.tree.CM$byClass[1:2])
 
 # Print out tree visualization
-plot(h1.tree$finalModel)
-text(h1.tree$finalModel)
+h1.out <- rpart(form, data = h1.train, cp = 0.01798144)
+rpart.plot(h1.out, main="Classification Tree")
 
 #### HOTEL 2 ####
 # Fit basic tree model for H2
