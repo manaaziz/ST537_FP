@@ -149,7 +149,6 @@ h2.index <- createDataPartition(h2$IsCanceled, p = .75, list = FALSE)
 # Create train/test data for H1
 h1.train <- h1[h1.index,preds]
 h1.test <- h1[-h1.index,preds]
-h1.train <- h1.train %>% filter(AssignedRoomType != "P")
 
 # Create train/test data for H2
 h2.train <- h2[h2.index,preds]
